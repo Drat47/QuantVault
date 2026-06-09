@@ -16,6 +16,7 @@ venv/
 node_modules/
 frontend/dist/
 frontend/dist-ssr/
+frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 *.log
