@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { signup } from "../api";
 
 export default function Signup({ onSignupSuccess }) {
   const [email, setEmail] = useState("");
@@ -13,21 +14,11 @@ export default function Signup({ onSignupSuccess }) {
     setSuccess("");
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) {
-        const msg = (await res.json()).detail || "Signup failed";
-        setError(msg);
-        setLoading(false);
-        return;
-      }
+      await signup({ email, password });
       setSuccess("Signup successful! Redirecting to login...");
       setTimeout(() => onSignupSuccess && onSignupSuccess(), 1500);
-    } catch {
-      setError("Network/server error! Please try again.");
+    } catch (err) {
+      setError(err.message || "Signup failed");
     } finally {
       setLoading(false);
     }

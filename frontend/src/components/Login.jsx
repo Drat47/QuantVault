@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { login } from "../api";
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -10,23 +11,12 @@ export default function Login({ onLogin }) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const formBody = new URLSearchParams({ username: email, password: password });
     try {
-      const res = await fetch("http://127.0.0.1:8000/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formBody.toString(),
-      });
-      if (!res.ok) {
-        setError("Login failed! Check email and password.");
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
+      const data = await login({ username: email, password: password });
       console.log("Login token received:", data.access_token);
       onLogin(data.access_token);
-    } catch {
-      setError("Network/server error! Please try again.");
+    } catch (err) {
+      setError(err.message || "Login failed! Check email and password.");
     } finally {
       setLoading(false);
     }
