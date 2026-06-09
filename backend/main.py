@@ -1,12 +1,16 @@
 # Complete main.py with authentication-based token and investment APIs
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.base import BaseHTTPMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.requests import Request
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Dict, List
 from pydantic import EmailStr
 import bcrypt
 import os
+import re
 
 def hash_password(password: str) -> str:
     pwd_bytes = password.encode('utf-8')
@@ -24,21 +28,36 @@ app = FastAPI(title="QuantVault API", version="1.0.0")
 # Falls back to localhost for local development
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-# Build list of allowed origins — always include local dev + any env-provided URL
-allowed_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://quant-vault-nine.vercel.app",
-    FRONTEND_URL,
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+# Regex-based CORS: allow localhost + any *.vercel.app subdomain + env-configured URL
+ALLOWED_ORIGIN_REGEX = re.compile(
+    r"^(http://localhost:\d+"
+    r"|http://127\.0\.0\.1:\d+"
+    r"|https://[\w-]+\.vercel\.app"
+    r")$"
 )
+
+class DynamicCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
+        is_allowed = (
+            ALLOWED_ORIGIN_REGEX.match(origin)
+            or origin == FRONTEND_URL
+        )
+
+        if request.method == "OPTIONS":
+            response = Response(status_code=200)
+        else:
+            response = await call_next(request)
+
+        if is_allowed and origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+
+        return response
+
+app.add_middleware(DynamicCORSMiddleware)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
